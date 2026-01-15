@@ -13,8 +13,8 @@ function process_folder() {
     local folder_name=$(basename "$target_path")
     local parent_dir=$(dirname "$target_path")
 
-    # Absolute path for the new zip file
-    local zip_file="${PWD}/${parent_dir}/${folder_name}.zip"
+    # Create zip file in the same directory as the folder
+    local zip_file="${parent_dir}/${folder_name}.zip"
 
     echo "Processing: $target_path"
 
@@ -86,6 +86,31 @@ function extract_archive() {
     fi
 }
 
+# Function: Recursively find album folders (folders containing MP3 files)
+function find_album_folders() {
+    local search_path="$1"
+    local found_albums=()
+
+    # Check if current folder contains MP3 files
+    if ls "$search_path"/*.mp3 >/dev/null 2>&1; then
+        found_albums+=("$search_path")
+    else
+        # If no MP3 files, check subfolders
+        for subfolder in "$search_path"/*/; do
+            [ -d "$subfolder" ] || continue
+            subfolder="${subfolder%/}"
+
+            # Recursively check subfolder
+            local sub_albums
+            mapfile -t sub_albums < <(find_album_folders "$subfolder")
+            found_albums+=("${sub_albums[@]}")
+        done
+    fi
+
+    # Output found albums
+    printf '%s\n' "${found_albums[@]}"
+}
+
 # --- Main Script Logic ---
 
 COMMAND="$1"
@@ -94,78 +119,98 @@ if [ -z "$COMMAND" ]; then
     echo "Usage:"
     echo "  music-archive <folder>     : Archive a specific folder"
     echo "  music-archive <archive.zip>: Extract a specific archive"
-    echo "  music-archive list         : List all unzipped folders in */*/"
-    echo "  music-archive zip          : Archive all unzipped folders in */*/"
-    echo "  music-archive unzip        : Extract all archives in current directory"
+    echo "  music-archive list <path>  : List all unzipped folders in specified directory"
+    echo "  music-archive zip <path>   : Archive all folders in specified directory"
     echo "  music-archive unzip <path> : Extract all archives in specified directory"
-    echo "  music-archive unzip <file> : Extract specific archive file"
     exit 1
 fi
 
 # LIST MODE
 if [ "$COMMAND" == "list" ]; then
-    echo "Scanning for missing archives in */*/ ..."
-    count=0
-    for dir in */*/; do
-        [ -d "$dir" ] || continue
-        clean_dir="${dir%/}"
+    TARGET_PATH="${2%/}"  # Remove trailing slash
 
-        if [ ! -f "${clean_dir}.zip" ]; then
-            echo "  [MISSING] $clean_dir"
-            ((count++))
-        fi
-    done
-    echo "---------------------------------"
-    echo "Total folders waiting to be zipped: $count"
+    # Path parameter is required
+    if [ -z "$TARGET_PATH" ]; then
+        echo "Error: list command requires a directory path."
+        echo "Usage: music-archive list <path>"
+        exit 1
+    fi
+
+    # If target path is a directory, find all album folders in it
+    if [ -d "$TARGET_PATH" ]; then
+        echo "Scanning for missing archives in $TARGET_PATH ..."
+        count=0
+
+        # Find all album folders recursively
+        while IFS= read -r -d '' album_folder; do
+            [ -n "$album_folder" ] || continue
+
+            if [ ! -f "${album_folder}.zip" ]; then
+                echo "  [MISSING] $album_folder"
+                ((count++))
+            fi
+        done < <(find_album_folders "$TARGET_PATH" | tr '\n' '\0')
+
+        echo "---------------------------------"
+        echo "Total folders waiting to be zipped: $count"
+
+    else
+        echo "Error: '$TARGET_PATH' is not a valid directory."
+        exit 1
+    fi
 
 # BATCH MODE (Accepts 'zip' OR 'archive')
 elif [ "$COMMAND" == "zip" ] || [ "$COMMAND" == "archive" ]; then
-    echo "Starting batch archive process..."
-    count=0
-    for dir in */*/; do
-        [ -d "$dir" ] || continue
-        clean_dir="${dir%/}"
+    TARGET_PATH="${2%/}"  # Remove trailing slash
 
-        # Only process if zip does not exist
-        if [ ! -f "${clean_dir}.zip" ]; then
-            process_folder "$clean_dir"
-            ((count++))
+    # Path parameter is required
+    if [ -z "$TARGET_PATH" ]; then
+        echo "Error: zip command requires a directory path."
+        echo "Usage: music-archive zip <path>"
+        exit 1
+    fi
+
+    # If target path is a directory, archive all album folders in it
+    if [ -d "$TARGET_PATH" ]; then
+        echo "Starting batch archive process in: $TARGET_PATH"
+        count=0
+
+        # Find all album folders recursively
+        while IFS= read -r -d '' album_folder; do
+            [ -n "$album_folder" ] || continue
+
+            # Only process if zip does not exist
+            if [ ! -f "${album_folder}.zip" ]; then
+                process_folder "$album_folder"
+                ((count++))
+            fi
+        done < <(find_album_folders "$TARGET_PATH" | tr '\n' '\0')
+
+        if [ $count -eq 0 ]; then
+            echo "No unzipped album folders found in '$TARGET_PATH'."
+        else
+            echo "---------------------------------"
+            echo "Batch archive complete. Processed $count folders."
         fi
-    done
 
-    if [ $count -eq 0 ]; then
-        echo "No unzipped folders found."
     else
-        echo "---------------------------------"
-        echo "Batch complete. Processed $count folders."
+        echo "Error: '$TARGET_PATH' is not a valid directory."
+        exit 1
     fi
 
 # UNZIP MODE
 elif [ "$COMMAND" == "unzip" ]; then
-    TARGET_PATH="$2"
+    TARGET_PATH="${2%/}"  # Remove trailing slash
 
-    # If no target path specified, use current directory
+    # Path parameter is required
     if [ -z "$TARGET_PATH" ]; then
-        echo "Starting batch extraction process in current directory..."
-        count=0
-        for zip_file in *.zip; do
-            [ -f "$zip_file" ] || continue
-
-            extract_archive "$zip_file"
-            if [ $? -eq 0 ]; then
-                ((count++))
-            fi
-        done
-
-        if [ $count -eq 0 ]; then
-            echo "No zip files found or processed."
-        else
-            echo "---------------------------------"
-            echo "Batch extraction complete. Processed $count archives."
-        fi
+        echo "Error: unzip command requires a path."
+        echo "Usage: music-archive unzip <path>"
+        exit 1
+    fi
 
     # If target path is a specific zip file
-    elif [ -f "$TARGET_PATH" ] && [[ "$TARGET_PATH" == *.zip ]]; then
+    if [ -f "$TARGET_PATH" ] && [[ "$TARGET_PATH" == *.zip ]]; then
         extract_archive "$TARGET_PATH"
 
     # If target path is a directory, extract all zip files in it

@@ -16,10 +16,12 @@ A bash script that efficiently manages your music collection by archiving folder
 
 - **Single folder archiving**: Archive a specific music folder
 - **Single archive extraction**: Extract a specific ZIP file to a folder
-- **Batch archiving**: Archive all unzipped folders in subdirectories
+- **Smart album detection**: Automatically finds folders containing MP3 files (actual albums)
+- **Recursive scanning**: Works with any folder structure depth
+- **Batch archiving**: Archive all unzipped album folders in subdirectories
 - **Batch extraction**: Extract all ZIP files in a directory
 - **Safety checks**: Only deletes originals after successful operations
-- **Progress tracking**: Lists folders awaiting archival
+- **Progress tracking**: Lists album folders awaiting archival
 - **Quiet operation**: Minimal output during operations
 
 ## Installation
@@ -84,30 +86,56 @@ Extracts a single ZIP file to a folder and deletes the archive after successful 
 #### 3. List Unarchived Folders
 
 ```bash
-./music_archive.sh list
+./music_archive.sh list <directory_path>
 ```
 
-Scans for folders in `*/*/` pattern that don't have corresponding ZIP files.
+Scans for album folders (containing MP3 files) in the specified directory that don't have corresponding ZIP files. The script recursively searches through subdirectories to find actual album folders.
+
+**Examples:**
+
+```bash
+# List unarchived albums in current directory
+./music_archive.sh list .
+
+# List unarchived albums in specific artist directory
+./music_archive.sh list "Pink Floyd/"
+
+# List unarchived albums in entire music collection
+./music_archive.sh list "/mnt/d/Music/"
+```
 
 **Example output:**
 
 ```txt
-Scanning for missing archives in */*/ ...
-  [MISSING] Artist1/Album1
-  [MISSING] Artist2/Album2
+Scanning for missing archives in Pink Floyd/ ...
+  [MISSING] Pink Floyd/Dark Side of the Moon
+  [MISSING] Pink Floyd/The Wall
 ---------------------------------
 Total folders waiting to be zipped: 2
 ```
 
-#### 3. Batch Archive All Folders
+#### 4. Batch Archive All Folders
 
 ```bash
-./music_archive.sh zip
+./music_archive.sh zip <directory_path>
 # OR
-./music_archive.sh archive
+./music_archive.sh archive <directory_path>
 ```
 
-Archives all folders in `*/*/` pattern that don't already have ZIP files.
+Archives all album folders (containing MP3 files) in the specified directory that don't already have ZIP files. The script recursively searches for folders containing MP3 files and treats those as album folders.
+
+**Examples:**
+
+```bash
+# Archive all album folders in current directory
+./music_archive.sh zip .
+
+# Archive all albums in specific artist folder
+./music_archive.sh zip "Pink Floyd/"
+
+# Archive all albums in music collection
+./music_archive.sh zip "/mnt/d/Music/"
+```
 
 **Example output:**
 
@@ -123,64 +151,80 @@ Processing: Artist2/Album2
 Batch complete. Processed 2 folders.
 ```
 
-#### 5. Extract All Archives (Current Directory)
+#### 5. Extract All Archives
 
 ```bash
-./music_archive.sh unzip
+./music_archive.sh unzip <directory_or_file_path>
 ```
 
-Extracts all ZIP files in the current directory and deletes the archives after successful extraction.
+Extracts ZIP files and deletes the archives after successful extraction.
 
-#### 6. Extract All Archives (Specific Directory)
+- **Directory path**: Extracts all ZIP files in the specified directory
+- **File path**: Extracts a specific ZIP file
 
-```bash
-./music_archive.sh unzip <directory_path>
-```
-
-Extracts all ZIP files in the specified directory and deletes the archives after successful extraction.
-
-**Example:**
+**Examples:**
 
 ```bash
+# Extract all archives in current directory
+./music_archive.sh unzip .
+
+# Extract all archives in specific directory
 ./music_archive.sh unzip "/mnt/d/storage/artist"
-```
 
-#### 7. Extract Specific Archive with Path
-
-```bash
-./music_archive.sh unzip <archive_path>
-```
-
-Extracts a specific ZIP file and deletes the archive after successful extraction.
-
-**Example:**
-
-```bash
+# Extract specific archive
 ./music_archive.sh unzip "/mnt/d/storage/artist/album.zip"
 ```
 
 ## Directory Structure
 
-The script expects a music collection organized in this format:
+The script works with any music collection structure and intelligently detects album folders by looking for MP3 files. It supports various organizational patterns:
+
+### Simple Structure
 
 ```txt
 music-collection/
 ├── Artist1/
-│   ├── Album1/          # Will be archived to Album1.zip
-│   ├── Album2/          # Will be archived to Album2.zip
-│   └── Album3.zip       # Already archived (will be skipped)
+│   ├── Album1/ (contains *.mp3) # Will be archived to Album1.zip
+│   ├── Album2/ (contains *.mp3) # Will be archived to Album2.zip
+│   └── Album3.zip              # Already archived (will be skipped)
 ├── Artist2/
-│   └── Album4/          # Will be archived to Album4.zip
+│   └── Album4/ (contains *.mp3) # Will be archived to Album4.zip
 └── Artist3/
-    └── Album5.zip       # Already archived (will be skipped)
+    └── Album5.zip              # Already archived (will be skipped)
 ```
+
+### Complex Structure
+
+```txt
+music-collection/
+├── Pink Floyd/
+│   ├── Studio Albums/
+│   │   ├── Dark Side of the Moon/ (*.mp3) # Detected as album
+│   │   └── The Wall/ (*.mp3)              # Detected as album
+│   ├── Live Albums/
+│   │   └── Live at Pompeii/ (*.mp3)       # Detected as album
+│   └── Compilations/
+│       └── Greatest Hits/ (*.mp3)         # Detected as album
+└── Beatles/
+    ├── Abbey Road/ (*.mp3)                # Detected as album
+    └── Sgt Peppers/ (*.mp3)               # Detected as album
+```
+
+**Key Points:**
+
+- Only folders containing MP3 files are considered "albums"
+- Artist folders without MP3 files are ignored
+- The script recursively searches through any folder structure
+- Works with any organizational pattern or depth
 
 ## How It Works
 
-1. **Safety First**: The script checks if the target folder exists before processing
-2. **Content Preservation**: Creates ZIP files containing only the folder contents (not the folder itself)
-3. **Verification**: Only deletes the original folder after confirming successful ZIP creation
-4. **Error Handling**: Provides clear error messages and preserves data if compression fails
+1. **Smart Detection**: The script intelligently identifies album folders by scanning for MP3 files
+2. **Recursive Search**: Works through any folder structure depth to find actual music albums
+3. **Safety First**: Checks if target folders exist before processing
+4. **Content Preservation**: Creates ZIP files containing only the folder contents (not the folder itself)
+5. **Verification**: Only deletes original folders after confirming successful ZIP creation
+6. **Error Handling**: Provides clear error messages and preserves data if operations fail
 
 ## Requirements
 
@@ -193,11 +237,11 @@ music-collection/
 ### Organize a new music collection
 
 ```bash
-# First, see what needs archiving
-./music_archive.sh list
+# First, see what needs archiving in current directory
+./music_archive.sh list .
 
-# Archive everything at once
-./music_archive.sh zip
+# Archive everything in current directory
+./music_archive.sh zip .
 ```
 
 ### Archive a single new album
@@ -207,11 +251,21 @@ music-collection/
 ./music_archive.sh "Pink Floyd/Dark Side of the Moon"
 ```
 
+### Archive all albums for specific artist
+
+```bash
+# Archive all Pink Floyd albums
+./music_archive.sh zip "Pink Floyd/"
+
+# List what needs archiving for specific artist
+./music_archive.sh list "Pink Floyd/"
+```
+
 ### Extract archived music
 
 ```bash
 # Extract all archives in current directory
-./music_archive.sh unzip
+./music_archive.sh unzip .
 
 # Extract all archives in a specific folder
 ./music_archive.sh unzip "/path/to/music/folder"
@@ -223,8 +277,11 @@ music-collection/
 ### Check progress
 
 ```bash
-# See what's left to archive
-./music_archive.sh list
+# See what's left to archive in current directory
+./music_archive.sh list .
+
+# See what's left to archive for specific artist
+./music_archive.sh list "Pink Floyd/"
 ```
 
 ## Error Handling
@@ -240,6 +297,8 @@ The script includes several safety features:
 
 ## Notes
 
+- Only folders containing MP3 files are considered "albums" for archiving
+- The script recursively searches through folder structures of any depth
 - ZIP files are created in the same directory as the original folder
 - Extracted folders are created in the same directory as the ZIP file
 - Original files are permanently deleted after successful operations
