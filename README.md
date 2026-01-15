@@ -1,23 +1,26 @@
 # Music Archive
 
-A bash script that efficiently archives music folders into ZIP files and manages your music collection by converting directories to compressed archives.
+A bash script that efficiently manages your music collection by archiving folders into ZIP files and extracting archives back to folders.
 
 ## Overview
 
 `music_archive.sh` is designed to help organize large music collections by:
 
 - Converting music folders to ZIP archives
-- Automatically removing original folders after successful compression
-- Batch processing multiple folders at once
+- Extracting ZIP archives back to folders
+- Automatically removing original files after successful operations
+- Batch processing multiple folders or archives at once
 - Listing folders that haven't been archived yet
 
 ## Features
 
 - **Single folder archiving**: Archive a specific music folder
-- **Batch processing**: Archive all unzipped folders in subdirectories
-- **Safety checks**: Only deletes original folders after successful ZIP creation
+- **Single archive extraction**: Extract a specific ZIP file to a folder
+- **Batch archiving**: Archive all unzipped folders in subdirectories
+- **Batch extraction**: Extract all ZIP files in a directory
+- **Safety checks**: Only deletes originals after successful operations
 - **Progress tracking**: Lists folders awaiting archival
-- **Quiet operation**: Minimal output during ZIP creation
+- **Quiet operation**: Minimal output during operations
 
 ## Installation
 
@@ -64,7 +67,21 @@ Archives a single folder and deletes the original after successful compression.
 ./music_archive.sh "Artist/Album"
 ```
 
-#### 2. List Unarchived Folders
+#### 2. Extract a Specific Archive
+
+```bash
+./music_archive.sh <archive.zip>
+```
+
+Extracts a single ZIP file to a folder and deletes the archive after successful extraction.
+
+**Example:**
+
+```bash
+./music_archive.sh "Artist - Album.zip"
+```
+
+#### 3. List Unarchived Folders
 
 ```bash
 ./music_archive.sh list
@@ -104,6 +121,42 @@ Processing: Artist2/Album2
   [OK] Original folder deleted.
 ---------------------------------
 Batch complete. Processed 2 folders.
+```
+
+#### 5. Extract All Archives (Current Directory)
+
+```bash
+./music_archive.sh unzip
+```
+
+Extracts all ZIP files in the current directory and deletes the archives after successful extraction.
+
+#### 6. Extract All Archives (Specific Directory)
+
+```bash
+./music_archive.sh unzip <directory_path>
+```
+
+Extracts all ZIP files in the specified directory and deletes the archives after successful extraction.
+
+**Example:**
+
+```bash
+./music_archive.sh unzip "/mnt/d/storage/artist"
+```
+
+#### 7. Extract Specific Archive with Path
+
+```bash
+./music_archive.sh unzip <archive_path>
+```
+
+Extracts a specific ZIP file and deletes the archive after successful extraction.
+
+**Example:**
+
+```bash
+./music_archive.sh unzip "/mnt/d/storage/artist/album.zip"
 ```
 
 ## Directory Structure
@@ -154,6 +207,19 @@ music-collection/
 ./music_archive.sh "Pink Floyd/Dark Side of the Moon"
 ```
 
+### Extract archived music
+
+```bash
+# Extract all archives in current directory
+./music_archive.sh unzip
+
+# Extract all archives in a specific folder
+./music_archive.sh unzip "/path/to/music/folder"
+
+# Extract a specific album
+./music_archive.sh unzip "Pink Floyd - Dark Side of the Moon.zip"
+```
+
 ### Check progress
 
 ```bash
@@ -165,14 +231,18 @@ music-collection/
 
 The script includes several safety features:
 
-- Validates directory existence before processing
-- Checks ZIP creation success before deleting originals
+- Validates directory and file existence before processing
+- Checks operation success before deleting originals
+- Prevents overwriting existing directories during extraction
 - Provides clear error messages for troubleshooting
-- Preserves original folders if compression fails
+- Preserves original files if operations fail
+- Cleans up partially created directories on extraction failure
 
 ## Notes
 
 - ZIP files are created in the same directory as the original folder
-- Original folders are permanently deleted after successful archiving
-- The script uses quiet mode for ZIP creation to reduce output clutter
-- Folder names with spaces are properly handled
+- Extracted folders are created in the same directory as the ZIP file
+- Original files are permanently deleted after successful operations
+- The script uses quiet mode for operations to reduce output clutter
+- File and folder names with spaces are properly handled
+- Existing directories will not be overwritten during extraction
