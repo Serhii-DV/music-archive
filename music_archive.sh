@@ -86,16 +86,41 @@ function extract_archive() {
     fi
 }
 
-# Function: Recursively find album folders (folders containing MP3 files)
+# Common audio formats that qualify a folder for archiving.
+# Popular lossless formats matched here: FLAC, WAV, AIFF, APE, WavPack.
+SUPPORTED_AUDIO_EXTENSIONS=(
+    "mp3"
+    "flac"
+    "wav"
+    "aiff"
+    "aif"
+    "ape"
+    "wv"
+)
+
+function has_supported_audio_files() {
+    local search_path="$1"
+    local extension
+
+    for extension in "${SUPPORTED_AUDIO_EXTENSIONS[@]}"; do
+        if find "$search_path" -maxdepth 1 -type f -iname "*.${extension}" | read -r; then
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+# Function: Recursively find album folders (folders containing supported audio files)
 function find_album_folders() {
     local search_path="$1"
     local found_albums=()
 
-    # Check if current folder contains MP3 files
-    if ls "$search_path"/*.mp3 >/dev/null 2>&1; then
+    # Check if current folder contains supported audio files
+    if has_supported_audio_files "$search_path"; then
         found_albums+=("$search_path")
     else
-        # If no MP3 files, check subfolders
+        # If no supported audio files, check subfolders
         for subfolder in "$search_path"/*/; do
             [ -d "$subfolder" ] || continue
             subfolder="${subfolder%/}"
