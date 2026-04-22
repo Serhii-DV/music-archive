@@ -45,6 +45,18 @@ function print_help_line() {
     echo -e "  ${COLOR_GREEN}${padded_command}${COLOR_RESET} ${COLOR_BLUE}:${COLOR_RESET} ${description}"
 }
 
+function print_usage() {
+    print_heading "Usage:"
+    print_help_line "music-archive <folder>" "List all unzipped folders in a directory"
+    print_help_line "music-archive <archive.zip>" "Extract a specific archive"
+    print_help_line "music-archive <path> list" "List all unzipped folders in a directory"
+    print_help_line "music-archive <path> zip" "Archive all album folders in a directory"
+    print_help_line "music-archive <path> archive" "Same as zip"
+    print_help_line "music-archive <path> unzip" "Extract all archives in a directory"
+    print_help_line "music-archive help" "Show this help screen"
+    print_help_line "music-archive --help" "Show this help screen"
+}
+
 # Function: The core logic to zip and delete a SINGLE folder
 function process_folder() {
     local target_path="${1%/}" # Remove trailing slash
@@ -186,19 +198,13 @@ function find_album_folders() {
 TARGET_PATH="${1%/}"
 COMMAND="$2"
 
-if [ -z "$TARGET_PATH" ]; then
-    print_heading "Usage:"
-    print_help_line "music-archive <folder>" "Archive a specific folder"
-    print_help_line "music-archive <archive.zip>" "Extract a specific archive"
-    print_help_line "music-archive <path> list" "List all unzipped folders in a directory"
-    print_help_line "music-archive <path> zip" "Archive all album folders in a directory"
-    print_help_line "music-archive <path> archive" "Same as zip"
-    print_help_line "music-archive <path> unzip" "Extract all archives in a directory"
+if [ -z "$TARGET_PATH" ] || [ "$TARGET_PATH" == "help" ] || [ "$TARGET_PATH" == "--help" ]; then
+    print_usage
     exit 1
 fi
 
 # LIST MODE
-if [ "$COMMAND" == "list" ]; then
+if [ "$COMMAND" == "list" ] || { [ -z "$COMMAND" ] && [ -d "$TARGET_PATH" ]; }; then
     # Path parameter is required
     if [ -z "$TARGET_PATH" ]; then
         print_error "Error: list command requires a directory path."
@@ -304,22 +310,12 @@ elif [ "$COMMAND" == "unzip" ]; then
         exit 1
     fi
 
-# SINGLE FOLDER MODE
-elif [ -d "$TARGET_PATH" ] && [ -z "$COMMAND" ]; then
-    process_folder "$TARGET_PATH"
-
 # SINGLE ARCHIVE MODE
 elif [ -f "$TARGET_PATH" ] && [[ "$TARGET_PATH" == *.zip ]] && [ -z "$COMMAND" ]; then
     extract_archive "$TARGET_PATH"
 
 else
     print_error "Error: Invalid arguments."
-    print_heading "Usage:"
-    print_help_line "music-archive <folder>" "Archive a specific folder"
-    print_help_line "music-archive <archive.zip>" "Extract a specific archive"
-    print_help_line "music-archive <path> list" "List all unzipped folders in a directory"
-    print_help_line "music-archive <path> zip" "Archive all album folders in a directory"
-    print_help_line "music-archive <path> archive" "Same as zip"
-    print_help_line "music-archive <path> unzip" "Extract all archives in a directory"
+    print_usage
     exit 1
 fi
