@@ -138,26 +138,26 @@ function find_album_folders() {
 
 # --- Main Script Logic ---
 
-COMMAND="$1"
+TARGET_PATH="${1%/}"
+COMMAND="$2"
 
-if [ -z "$COMMAND" ]; then
+if [ -z "$TARGET_PATH" ]; then
     echo "Usage:"
-    echo "  music-archive <folder>     : Archive a specific folder"
-    echo "  music-archive <archive.zip>: Extract a specific archive"
-    echo "  music-archive list <path>  : List all unzipped folders in specified directory"
-    echo "  music-archive zip <path>   : Archive all folders in specified directory"
-    echo "  music-archive unzip <path> : Extract all archives in specified directory"
+    echo "  music-archive <folder>       : Archive a specific folder"
+    echo "  music-archive <archive.zip>  : Extract a specific archive"
+    echo "  music-archive <path> list    : List all unzipped folders in a directory"
+    echo "  music-archive <path> zip     : Archive all album folders in a directory"
+    echo "  music-archive <path> archive : Same as zip"
+    echo "  music-archive <path> unzip   : Extract all archives in a directory"
     exit 1
 fi
 
 # LIST MODE
 if [ "$COMMAND" == "list" ]; then
-    TARGET_PATH="${2%/}"  # Remove trailing slash
-
     # Path parameter is required
     if [ -z "$TARGET_PATH" ]; then
         echo "Error: list command requires a directory path."
-        echo "Usage: music-archive list <path>"
+        echo "Usage: music-archive <path> list"
         exit 1
     fi
 
@@ -186,12 +186,10 @@ if [ "$COMMAND" == "list" ]; then
 
 # BATCH MODE (Accepts 'zip' OR 'archive')
 elif [ "$COMMAND" == "zip" ] || [ "$COMMAND" == "archive" ]; then
-    TARGET_PATH="${2%/}"  # Remove trailing slash
-
     # Path parameter is required
     if [ -z "$TARGET_PATH" ]; then
         echo "Error: zip command requires a directory path."
-        echo "Usage: music-archive zip <path>"
+        echo "Usage: music-archive <path> zip"
         exit 1
     fi
 
@@ -225,12 +223,10 @@ elif [ "$COMMAND" == "zip" ] || [ "$COMMAND" == "archive" ]; then
 
 # UNZIP MODE
 elif [ "$COMMAND" == "unzip" ]; then
-    TARGET_PATH="${2%/}"  # Remove trailing slash
-
     # Path parameter is required
     if [ -z "$TARGET_PATH" ]; then
         echo "Error: unzip command requires a path."
-        echo "Usage: music-archive unzip <path>"
+        echo "Usage: music-archive <path> unzip"
         exit 1
     fi
 
@@ -264,14 +260,21 @@ elif [ "$COMMAND" == "unzip" ]; then
     fi
 
 # SINGLE FOLDER MODE
-elif [ -d "$COMMAND" ]; then
-    process_folder "$COMMAND"
+elif [ -d "$TARGET_PATH" ] && [ -z "$COMMAND" ]; then
+    process_folder "$TARGET_PATH"
 
 # SINGLE ARCHIVE MODE
-elif [ -f "$COMMAND" ] && [[ "$COMMAND" == *.zip ]]; then
-    extract_archive "$COMMAND"
+elif [ -f "$TARGET_PATH" ] && [[ "$TARGET_PATH" == *.zip ]] && [ -z "$COMMAND" ]; then
+    extract_archive "$TARGET_PATH"
 
 else
-    echo "Error: '$COMMAND' is not a valid command, directory, or zip file."
+    echo "Error: Invalid arguments."
+    echo "Usage:"
+    echo "  music-archive <folder>"
+    echo "  music-archive <archive.zip>"
+    echo "  music-archive <path> list"
+    echo "  music-archive <path> zip"
+    echo "  music-archive <path> archive"
+    echo "  music-archive <path> unzip"
     exit 1
 fi
